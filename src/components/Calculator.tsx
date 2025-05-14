@@ -7,8 +7,15 @@ const Calculator = () => {
   const [firstOperand, setFirstOperand] = useState<number | null>(null);
   const [operator, setOperator] = useState<string | null>(null);
   const [waitingForSecondOperand, setWaitingForSecondOperand] = useState(false);
+  const [error, setError] = useState<boolean>(false);
 
   const inputDigit = (digit: string) => {
+    if (error) {
+      setError(false);
+      setDisplay(digit);
+      return;
+    }
+    
     if (waitingForSecondOperand) {
       setDisplay(digit);
       setWaitingForSecondOperand(false);
@@ -18,6 +25,12 @@ const Calculator = () => {
   };
 
   const inputDecimal = () => {
+    if (error) {
+      setError(false);
+      setDisplay('0.');
+      return;
+    }
+    
     if (waitingForSecondOperand) {
       setDisplay('0.');
       setWaitingForSecondOperand(false);
@@ -34,24 +47,39 @@ const Calculator = () => {
     setFirstOperand(null);
     setOperator(null);
     setWaitingForSecondOperand(false);
+    setError(false);
   };
 
   const performOperation = (nextOperator: string) => {
     const inputValue = parseFloat(display);
 
+    if (error) {
+      setError(false);
+      setFirstOperand(inputValue);
+      setOperator(nextOperator);
+      setWaitingForSecondOperand(true);
+      return;
+    }
+
     if (firstOperand === null) {
       setFirstOperand(inputValue);
     } else if (operator) {
       const result = calculate(firstOperand, inputValue, operator);
-      setDisplay(String(result));
-      setFirstOperand(result);
+      if (result === "Error") {
+        setDisplay("Error");
+        setError(true);
+        setFirstOperand(null);
+      } else {
+        setDisplay(String(result));
+        setFirstOperand(result);
+      }
     }
 
     setWaitingForSecondOperand(true);
     setOperator(nextOperator);
   };
 
-  const calculate = (firstOperand: number, secondOperand: number, operator: string) => {
+  const calculate = (firstOperand: number, secondOperand: number, operator: string): number | "Error" => {
     switch (operator) {
       case '+':
         return firstOperand + secondOperand;
@@ -60,7 +88,7 @@ const Calculator = () => {
       case '×':
         return firstOperand * secondOperand;
       case '÷':
-        return secondOperand !== 0 ? firstOperand / secondOperand : 'Error';
+        return secondOperand !== 0 ? firstOperand / secondOperand : "Error";
       default:
         return secondOperand;
     }
@@ -72,8 +100,15 @@ const Calculator = () => {
     const inputValue = parseFloat(display);
     const result = calculate(firstOperand, inputValue, operator);
     
-    setDisplay(String(result));
-    setFirstOperand(result);
+    if (result === "Error") {
+      setDisplay("Error");
+      setError(true);
+      setFirstOperand(null);
+    } else {
+      setDisplay(String(result));
+      setFirstOperand(result);
+    }
+    
     setOperator(null);
     setWaitingForSecondOperand(true);
   };
@@ -105,7 +140,7 @@ const Calculator = () => {
       <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 flex justify-end">
         <div className="text-right">
           <div className="text-white text-opacity-70 text-sm h-6">
-            {firstOperand !== null ? `${firstOperand} ${operator}` : ''}
+            {firstOperand !== null && !error ? `${firstOperand} ${operator}` : ''}
           </div>
           <div className="text-white text-4xl font-light truncate max-w-[270px]">
             {display}
@@ -124,6 +159,10 @@ const Calculator = () => {
         </CalcButton>
         <CalcButton 
           onClick={() => {
+            if (error) {
+              clearDisplay();
+              return;
+            }
             setDisplay(display === '0' ? '0' : display.slice(0, -1) || '0');
           }} 
           className="bg-gray-200 text-gray-800"
@@ -131,7 +170,13 @@ const Calculator = () => {
           ⌫
         </CalcButton>
         <CalcButton 
-          onClick={() => setDisplay(String(parseFloat(display) / 100))} 
+          onClick={() => {
+            if (error) {
+              clearDisplay();
+              return;
+            }
+            setDisplay(String(parseFloat(display) / 100));
+          }} 
           className="bg-gray-200 text-gray-800"
         >
           %
